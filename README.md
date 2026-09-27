@@ -48,6 +48,53 @@ python build_all.py
 
 That will create all required firmware files under the build_output directory, with hardware names as child directories. All target switching is handled automatically with the build_all command.
 
+### Building with Nix
+
+The flake pins ESP-IDF 5.5.4, its toolchains, and the component dependencies.
+Build the default board, **VESC Express T**, with:
+
+```bash
+nix build .#vesc-express-fw
+```
+
+The default flake package is the same firmware bundle. Its output contains
+`res_fw.qrc` and `<chip>/<HW_NAME>/{vesc_express,bootloader,partition-table}.bin`,
+matching the layout produced by `build_all.py` for VESC Tool.
+
+Select boards by their exact `HW_NAME` values using the package's `fwBoards`
+override:
+
+```bash
+nix build --impure --expr '
+  let flake = builtins.getFlake (toString ./.);
+  in flake.packages.${builtins.currentSystem}.vesc-express-fw.override {
+    fwBoards = [ "VESC Express T" "Devkit C6 FH4" "S3 N16R8" ];
+  }
+'
+```
+
+Use `fwBoards = "all";` to build every discovered board. An empty list or an
+unknown board name is an error. Each board gets a fresh build configuration,
+including boards that differ only in flash size or PSRAM.
+
+Other flakes can use `overlays.default` to access `pkgs.vesc-express-fw` with
+the same overrides. ESP-IDF 5.5's esptool 4 depends on `python-ecdsa`; the flake
+permits `python3.13-ecdsa-0.19.2` specifically for these build tools. Overlay
+consumers using this Nixpkgs version must also include that name in
+`config.permittedInsecurePackages`. These firmware builds do not use ECDSA
+signing.
+
+Component versions and archive hashes are recorded in `pkgs/components.json`.
+To refresh them after changing `main/idf_component.yml`, use the pinned
+toolchain environment, then rebuild the affected targets:
+
+```bash
+nix develop .#vesc-express-fw --command python pkgs/update-components.py
+```
+
+Dependency refreshes require network access; firmware compilation uses the
+pinned local components inside the Nix sandbox.
+
 ### Custom Hardware Targets
 
 If you wish to build the project with custom hardware config files you should add the hardware config files to the "**main/hwconf**" directory and use the HW_NAME build flag

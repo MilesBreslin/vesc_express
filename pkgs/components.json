@@ -1,0 +1,1022 @@
+{
+  "idfVersion": "5.5.4",
+  "sources": {
+    "atanisoft/esp_lcd_touch_xpt2046@1.0.6": {
+      "hash": "sha256-8RPIKo7ewfonabTHBd1SmOfcfrvI34TgyxpyDDzpxwk=",
+      "url": "https://components-file.espressif.com/components/atanisoft/esp_lcd_touch_xpt2046/1.0.6/atanisoft__esp_lcd_touch_xpt2046-v1.0.6.zip"
+    },
+    "espressif/cmake_utilities@0.5.3": {
+      "hash": "sha256-uAunrAEL92w5ICFYaj4ODn7ZxS/NuXAUXSxC27GYsTY=",
+      "url": "https://components-file.espressif.com/components/espressif/cmake_utilities/0.5.3/espressif__cmake_utilities-v0.5.3.zip"
+    },
+    "espressif/dhara@0.1.0": {
+      "hash": "sha256-3MdAMKDU+3+8YqPEuUKXm1iU2e0PybxGDUMft1SaQh0=",
+      "url": "https://components-file.espressif.com/components/espressif/dhara/0.1.0/espressif__dhara-v0.1.0.zip"
+    },
+    "espressif/eppp_link@1.1.6": {
+      "hash": "sha256-5x6lz6tJMawhsot+P3RAll5U8aqHXOl73ZlkZeaJutI=",
+      "url": "https://components-file.espressif.com/components/espressif/eppp_link/1.1.6/espressif__eppp_link-v1.1.6.zip"
+    },
+    "espressif/esp_hosted@3.0.0": {
+      "hash": "sha256-m3MQM8iQjv3/25NGg8VufykOR+YulVvf9xpLBWU4hTs=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_hosted/3.0.0/espressif__esp_hosted-v3.0.0.zip"
+    },
+    "espressif/esp_lcd_axs15231b@2.1.1": {
+      "hash": "sha256-Ihpq9XzB1W7WF4+eMuDUEcr2XWWH4iLkfd0rN7XBirY=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_axs15231b/2.1.1/espressif__esp_lcd_axs15231b-v2.1.1.zip"
+    },
+    "espressif/esp_lcd_jd9165@2.0.2": {
+      "hash": "sha256-ogu/kx4pmkb+/3NoA1aNKc/Yb7VkwxIK+qW5KkgInJc=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_jd9165/2.0.2/espressif__esp_lcd_jd9165-v2.0.2.zip"
+    },
+    "espressif/esp_lcd_st7701@2.0.2~2": {
+      "hash": "sha256-VTvZyvWt9Gj3eiFlebA/Flv+pbptpyqvxAf35rqXBM0=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_st7701/2.0.2~2/espressif__esp_lcd_st7701-v2.0.2_2.zip"
+    },
+    "espressif/esp_lcd_touch@1.2.1": {
+      "hash": "sha256-m54H7vZAOJVvR2jY7ajACiVZQpWxzVet+0hsEMkOZ0o=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_touch/1.2.1/espressif__esp_lcd_touch-v1.2.1.zip"
+    },
+    "espressif/esp_lcd_touch_cst816s@1.1.2": {
+      "hash": "sha256-1zf22tT7on778dW1RaMkP6dmOqK90ePWExvVOFtdnRI=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_touch_cst816s/1.1.2/espressif__esp_lcd_touch_cst816s-v1.1.2.zip"
+    },
+    "espressif/esp_lcd_touch_gt911@1.2.1": {
+      "hash": "sha256-A/UoYEtr14mIF8TjgywiNg1QTwg55XnMDM1DSVmojmc=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_lcd_touch_gt911/1.2.1/espressif__esp_lcd_touch_gt911-v1.2.1.zip"
+    },
+    "espressif/esp_serial_slave_link@1.1.2": {
+      "hash": "sha256-AfzVJ9k58uIKHviERLQN+hM9GvpkEsKP9N2JV7xkzxY=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_serial_slave_link/1.1.2/espressif__esp_serial_slave_link-v1.1.2.zip"
+    },
+    "espressif/esp_wifi_remote@1.5.1": {
+      "hash": "sha256-wrheqy7iLiZ9bk5thF8iEJ91OloT0eFO/iPzf/i6698=",
+      "url": "https://components-file.espressif.com/components/espressif/esp_wifi_remote/1.5.1/espressif__esp_wifi_remote-v1.5.1.zip"
+    },
+    "espressif/spi_nand_flash@0.1.0": {
+      "hash": "sha256-1EckPm+4Z/wZDuCIiL8YLyRLpg6J8wkKSe/gw9cnwuA=",
+      "url": "https://components-file.espressif.com/components/espressif/spi_nand_flash/0.1.0/espressif__spi_nand_flash-v0.1.0.zip"
+    },
+    "espressif/wifi_remote_over_eppp@0.3.3": {
+      "hash": "sha256-DAjvXs4b9e4wrVyIPA93ZGZ3ipUwRfY5+JdMs4wky0Q=",
+      "url": "https://components-file.espressif.com/components/espressif/wifi_remote_over_eppp/0.3.3/espressif__wifi_remote_over_eppp-v0.3.3.zip"
+    },
+    "waveshare/esp_lcd_touch_cst9217@1.0.4": {
+      "hash": "sha256-SAGeEo4KTamFTyYjtehEzbqKUqUuR/AOkmoBJLSlIMY=",
+      "url": "https://components-file.espressif.com/components/waveshare/esp_lcd_touch_cst9217/1.0.4/waveshare__esp_lcd_touch_cst9217-v1.0.4.zip"
+    }
+  },
+  "targets": {
+    "esp32c3": {
+      "dependencies": {
+        "atanisoft/esp_lcd_touch_xpt2046": {
+          "component_hash": "7e6381b67b6e487379118368b8e91624dc87036ef5734818de1db9eb35697998",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=1.0.4"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.6"
+        },
+        "espressif/cmake_utilities": {
+          "component_hash": "351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.1"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "0.5.3"
+        },
+        "espressif/dhara": {
+          "component_hash": "e6c1593523e023e7de93dd8ed6e867fe42e881736b95a5a89e046eab42d013ce",
+          "dependencies": [],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "espressif/esp_lcd_axs15231b": {
+          "component_hash": "62afe3c46789d7a13e3807c5d7a3a734870cd6375a28f14b12498c3382ad43b4",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "2.1.1"
+        },
+        "espressif/esp_lcd_touch": {
+          "component_hash": "3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/esp_lcd_touch_cst816s": {
+          "component_hash": "f017808eb754d3fe16987d413a2385f6356890f5737ee3fe36b6a548ea1d1d74",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.1.2"
+        },
+        "espressif/esp_lcd_touch_gt911": {
+          "component_hash": "737bdf29e0823eacf041381e81db2aaf5d378f3b5417df7f415f83319e3e790b",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/spi_nand_flash": {
+          "component_hash": "453500d30a10869d1cdc429abdfae03ad868495952778819d8a623a2d6b0f099",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.0"
+            },
+            {
+              "name": "espressif/dhara",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.1.*"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "idf": {
+          "source": {
+            "type": "idf"
+          },
+          "version": "5.5.4"
+        },
+        "waveshare/esp_lcd_touch_cst9217": {
+          "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.1.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.4"
+        }
+      },
+      "direct_dependencies": [
+        "atanisoft/esp_lcd_touch_xpt2046",
+        "espressif/dhara",
+        "espressif/esp_lcd_axs15231b",
+        "espressif/esp_lcd_touch",
+        "espressif/esp_lcd_touch_cst816s",
+        "espressif/esp_lcd_touch_gt911",
+        "espressif/spi_nand_flash",
+        "idf",
+        "waveshare/esp_lcd_touch_cst9217"
+      ],
+      "manifest_hash": "90948258936cb4d984d718f4c59cbffdad1c4e9ec3345b74043f48c3b6bc7454",
+      "target": "esp32c3",
+      "version": "2.0.0"
+    },
+    "esp32c6": {
+      "dependencies": {
+        "atanisoft/esp_lcd_touch_xpt2046": {
+          "component_hash": "7e6381b67b6e487379118368b8e91624dc87036ef5734818de1db9eb35697998",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=1.0.4"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.6"
+        },
+        "espressif/cmake_utilities": {
+          "component_hash": "351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.1"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "0.5.3"
+        },
+        "espressif/dhara": {
+          "component_hash": "e6c1593523e023e7de93dd8ed6e867fe42e881736b95a5a89e046eab42d013ce",
+          "dependencies": [],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "espressif/esp_lcd_axs15231b": {
+          "component_hash": "62afe3c46789d7a13e3807c5d7a3a734870cd6375a28f14b12498c3382ad43b4",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "2.1.1"
+        },
+        "espressif/esp_lcd_touch": {
+          "component_hash": "3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/esp_lcd_touch_cst816s": {
+          "component_hash": "f017808eb754d3fe16987d413a2385f6356890f5737ee3fe36b6a548ea1d1d74",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.1.2"
+        },
+        "espressif/esp_lcd_touch_gt911": {
+          "component_hash": "737bdf29e0823eacf041381e81db2aaf5d378f3b5417df7f415f83319e3e790b",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/spi_nand_flash": {
+          "component_hash": "453500d30a10869d1cdc429abdfae03ad868495952778819d8a623a2d6b0f099",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.0"
+            },
+            {
+              "name": "espressif/dhara",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.1.*"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "idf": {
+          "source": {
+            "type": "idf"
+          },
+          "version": "5.5.4"
+        },
+        "waveshare/esp_lcd_touch_cst9217": {
+          "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.1.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.4"
+        }
+      },
+      "direct_dependencies": [
+        "atanisoft/esp_lcd_touch_xpt2046",
+        "espressif/dhara",
+        "espressif/esp_lcd_axs15231b",
+        "espressif/esp_lcd_touch",
+        "espressif/esp_lcd_touch_cst816s",
+        "espressif/esp_lcd_touch_gt911",
+        "espressif/spi_nand_flash",
+        "idf",
+        "waveshare/esp_lcd_touch_cst9217"
+      ],
+      "manifest_hash": "90948258936cb4d984d718f4c59cbffdad1c4e9ec3345b74043f48c3b6bc7454",
+      "target": "esp32c6",
+      "version": "2.0.0"
+    },
+    "esp32p4": {
+      "dependencies": {
+        "atanisoft/esp_lcd_touch_xpt2046": {
+          "component_hash": "7e6381b67b6e487379118368b8e91624dc87036ef5734818de1db9eb35697998",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=1.0.4"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.6"
+        },
+        "espressif/cmake_utilities": {
+          "component_hash": "351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.1"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "0.5.3"
+        },
+        "espressif/dhara": {
+          "component_hash": "e6c1593523e023e7de93dd8ed6e867fe42e881736b95a5a89e046eab42d013ce",
+          "dependencies": [],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "espressif/eppp_link": {
+          "component_hash": "c1369b37f2b0b427b198ae14e07e7547d3da92b95fe4dc7f949e5de560b35f21",
+          "dependencies": [
+            {
+              "name": "espressif/esp_serial_slave_link",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "^1.1.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "1.1.6"
+        },
+        "espressif/esp_hosted": {
+          "component_hash": "8d0275483d91a12af62a9b1a6ae4e68811a12ceadb6633ce56a2f2029cbe1061",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.5"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "targets": [
+            "esp32",
+            "esp32c2",
+            "esp32s2",
+            "esp32s3",
+            "esp32c3",
+            "esp32c5",
+            "esp32c6",
+            "esp32c61",
+            "esp32h2",
+            "esp32h4",
+            "esp32p4"
+          ],
+          "version": "3.0.0"
+        },
+        "espressif/esp_lcd_axs15231b": {
+          "component_hash": "62afe3c46789d7a13e3807c5d7a3a734870cd6375a28f14b12498c3382ad43b4",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "2.1.1"
+        },
+        "espressif/esp_lcd_jd9165": {
+          "component_hash": "1eaeedd3fef31f7a48e932b17833216efe0b87238212cd7468c2e60f7236598c",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "targets": [
+            "esp32p4"
+          ],
+          "version": "2.0.2"
+        },
+        "espressif/esp_lcd_st7701": {
+          "component_hash": "924f346e36da39aaa38177e21bd360b5442abc792338fb64ad1e644481255898",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.4"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "targets": [
+            "esp32s3",
+            "esp32s31",
+            "esp32p4"
+          ],
+          "version": "2.0.2~2"
+        },
+        "espressif/esp_lcd_touch": {
+          "component_hash": "3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/esp_lcd_touch_cst816s": {
+          "component_hash": "f017808eb754d3fe16987d413a2385f6356890f5737ee3fe36b6a548ea1d1d74",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.1.2"
+        },
+        "espressif/esp_lcd_touch_gt911": {
+          "component_hash": "737bdf29e0823eacf041381e81db2aaf5d378f3b5417df7f415f83319e3e790b",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/esp_serial_slave_link": {
+          "component_hash": "ac1776806de0a6e371c84e87898bb983e19ce62aa7f1e2e5c4a3b0234a575d2c",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.0"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "1.1.2"
+        },
+        "espressif/esp_wifi_remote": {
+          "component_hash": "4ad3e3ec9ce7d26fde1ccd2b550b88952cc96ac089a06e0247f69d005cc31e1f",
+          "dependencies": [
+            {
+              "name": "espressif/esp_hosted",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "rules": [
+                {
+                  "if": "target in [esp32h2, esp32p4]"
+                }
+              ],
+              "version": ">=2.11"
+            },
+            {
+              "name": "espressif/wifi_remote_over_eppp",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=0.1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.5.1"
+        },
+        "espressif/spi_nand_flash": {
+          "component_hash": "453500d30a10869d1cdc429abdfae03ad868495952778819d8a623a2d6b0f099",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.0"
+            },
+            {
+              "name": "espressif/dhara",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.1.*"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "espressif/wifi_remote_over_eppp": {
+          "component_hash": "1fd6968af20f0b19e421f6b519b0a8caf81d689afc3783b564c28559e45f66ef",
+          "dependencies": [
+            {
+              "name": "espressif/eppp_link",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=0.1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "0.3.3"
+        },
+        "idf": {
+          "source": {
+            "type": "idf"
+          },
+          "version": "5.5.4"
+        },
+        "waveshare/esp_lcd_touch_cst9217": {
+          "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.1.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.4"
+        }
+      },
+      "direct_dependencies": [
+        "atanisoft/esp_lcd_touch_xpt2046",
+        "espressif/dhara",
+        "espressif/esp_hosted",
+        "espressif/esp_lcd_axs15231b",
+        "espressif/esp_lcd_jd9165",
+        "espressif/esp_lcd_st7701",
+        "espressif/esp_lcd_touch",
+        "espressif/esp_lcd_touch_cst816s",
+        "espressif/esp_lcd_touch_gt911",
+        "espressif/esp_wifi_remote",
+        "espressif/spi_nand_flash",
+        "idf",
+        "waveshare/esp_lcd_touch_cst9217"
+      ],
+      "manifest_hash": "90948258936cb4d984d718f4c59cbffdad1c4e9ec3345b74043f48c3b6bc7454",
+      "target": "esp32p4",
+      "version": "2.0.0"
+    },
+    "esp32s3": {
+      "dependencies": {
+        "atanisoft/esp_lcd_touch_xpt2046": {
+          "component_hash": "7e6381b67b6e487379118368b8e91624dc87036ef5734818de1db9eb35697998",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": ">=1.0.4"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.6"
+        },
+        "espressif/cmake_utilities": {
+          "component_hash": "351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.1"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com",
+            "type": "service"
+          },
+          "version": "0.5.3"
+        },
+        "espressif/dhara": {
+          "component_hash": "e6c1593523e023e7de93dd8ed6e867fe42e881736b95a5a89e046eab42d013ce",
+          "dependencies": [],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "espressif/esp_lcd_axs15231b": {
+          "component_hash": "62afe3c46789d7a13e3807c5d7a3a734870cd6375a28f14b12498c3382ad43b4",
+          "dependencies": [
+            {
+              "name": "espressif/cmake_utilities",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.*"
+            },
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.3"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "2.1.1"
+        },
+        "espressif/esp_lcd_touch": {
+          "component_hash": "3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/esp_lcd_touch_cst816s": {
+          "component_hash": "f017808eb754d3fe16987d413a2385f6356890f5737ee3fe36b6a548ea1d1d74",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.1.2"
+        },
+        "espressif/esp_lcd_touch_gt911": {
+          "component_hash": "737bdf29e0823eacf041381e81db2aaf5d378f3b5417df7f415f83319e3e790b",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.2.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.2.1"
+        },
+        "espressif/spi_nand_flash": {
+          "component_hash": "453500d30a10869d1cdc429abdfae03ad868495952778819d8a623a2d6b0f099",
+          "dependencies": [
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=5.0"
+            },
+            {
+              "name": "espressif/dhara",
+              "registry_url": "https://components.espressif.com",
+              "require": "private",
+              "version": "0.1.*"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "0.1.0"
+        },
+        "idf": {
+          "source": {
+            "type": "idf"
+          },
+          "version": "5.5.4"
+        },
+        "waveshare/esp_lcd_touch_cst9217": {
+          "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
+          "dependencies": [
+            {
+              "name": "espressif/esp_lcd_touch",
+              "registry_url": "https://components.espressif.com",
+              "require": "public",
+              "version": "^1.1.0"
+            },
+            {
+              "name": "idf",
+              "require": "private",
+              "version": ">=4.4.2"
+            }
+          ],
+          "source": {
+            "registry_url": "https://components.espressif.com/",
+            "type": "service"
+          },
+          "version": "1.0.4"
+        }
+      },
+      "direct_dependencies": [
+        "atanisoft/esp_lcd_touch_xpt2046",
+        "espressif/dhara",
+        "espressif/esp_lcd_axs15231b",
+        "espressif/esp_lcd_touch",
+        "espressif/esp_lcd_touch_cst816s",
+        "espressif/esp_lcd_touch_gt911",
+        "espressif/spi_nand_flash",
+        "idf",
+        "waveshare/esp_lcd_touch_cst9217"
+      ],
+      "manifest_hash": "90948258936cb4d984d718f4c59cbffdad1c4e9ec3345b74043f48c3b6bc7454",
+      "target": "esp32s3",
+      "version": "2.0.0"
+    }
+  }
+}
