@@ -1,5 +1,5 @@
 {
-  "idfVersion": "5.5.4",
+  "idfVersion": "5.5.5",
   "sources": {
     "atanisoft/esp_lcd_touch_xpt2046@1.0.6": {
       "hash": "sha256-8RPIKo7ewfonabTHBd1SmOfcfrvI34TgyxpyDDzpxwk=",
@@ -223,7 +223,7 @@
           "source": {
             "type": "idf"
           },
-          "version": "5.5.4"
+          "version": "5.5.5"
         },
         "waveshare/esp_lcd_touch_cst9217": {
           "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
@@ -418,7 +418,7 @@
           "source": {
             "type": "idf"
           },
-          "version": "5.5.4"
+          "version": "5.5.5"
         },
         "waveshare/esp_lcd_touch_cst9217": {
           "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
@@ -780,7 +780,7 @@
           "source": {
             "type": "idf"
           },
-          "version": "5.5.4"
+          "version": "5.5.5"
         },
         "waveshare/esp_lcd_touch_cst9217": {
           "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",
@@ -979,7 +979,7 @@
           "source": {
             "type": "idf"
           },
-          "version": "5.5.4"
+          "version": "5.5.5"
         },
         "waveshare/esp_lcd_touch_cst9217": {
           "component_hash": "27a00845832b7987cacf4c4125cbed5415d940987583065b01870ac080930856",

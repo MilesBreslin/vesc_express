@@ -21,8 +21,8 @@ from idf_component_tools.utils import ProjectRequirements
 def main():
     root = Path(__file__).resolve().parent.parent
     version = get_idf_version()
-    if version != "5.5.4":
-        raise SystemExit(f"Expected ESP-IDF 5.5.4, got {version}")
+    if version != "5.5.5":
+        raise SystemExit(f"Expected ESP-IDF 5.5.5, got {version}")
 
     pins = {"idfVersion": version, "sources": {}, "targets": {}}
     registry = StorageClient("https://components-file.espressif.com/")
