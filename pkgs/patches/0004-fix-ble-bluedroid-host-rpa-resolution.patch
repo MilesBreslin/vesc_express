@@ -1,0 +1,71 @@
+From d6f7ace54f6292586b4845b122afeeb233b923cc Mon Sep 17 00:00:00 2001
+From: Zhi Wei Jian <zhiweijian@espressif.com>
+Date: Sun, 11 Oct 2026 16:42:39 -0700
+Subject: [PATCH] fix(ble/bluedroid): fix host RPA resolution
+
+Backport the host RPA resolver hunks from Espressif commit 34dd906.
+Stop after the matched callback completes, preserve each advertising report's
+start pointer, and report the resolved peer address type.
+---
+ components/bt/host/bluedroid/stack/btm/btm_ble_addr.c | 4 +++-
+ components/bt/host/bluedroid/stack/btm/btm_ble_gap.c  | 9 +++++++--
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/components/bt/host/bluedroid/stack/btm/btm_ble_addr.c b/components/bt/host/bluedroid/stack/btm/btm_ble_addr.c
+index 60548a7..00da085 100644
+--- a/components/bt/host/bluedroid/stack/btm/btm_ble_addr.c
++++ b/components/bt/host/bluedroid/stack/btm/btm_ble_addr.c
+@@ -405,7 +405,9 @@ void btm_ble_resolve_random_addr(BD_ADDR random_bda, tBTM_BLE_RESOLVE_CBACK *p_c
+             p_dev_rec = list_node(p_node);
+             p_mgnt_cb->p_dev_rec = p_dev_rec;
+             if (btm_ble_match_random_bda(p_dev_rec)) {
+-                break;
++                // if matched, btm_ble_match_random_bda->btm_ble_proc_resolve_x->btm_ble_resolve_address_cmpl
++                p_mgnt_cb->p_dev_rec = NULL;
++                return;
+             }
+             p_mgnt_cb->p_dev_rec = NULL;
+         }
+diff --git a/components/bt/host/bluedroid/stack/btm/btm_ble_gap.c b/components/bt/host/bluedroid/stack/btm/btm_ble_gap.c
+index b4a04f9..9f693e4 100644
+--- a/components/bt/host/bluedroid/stack/btm/btm_ble_gap.c
++++ b/components/bt/host/bluedroid/stack/btm/btm_ble_gap.c
+@@ -946,7 +946,7 @@ static void btm_ble_resolve_random_addr_on_adv(void *p_rec, void *p)
+     tBTM_SEC_DEV_REC    *match_rec = (tBTM_SEC_DEV_REC *) p_rec;
+     UINT8       addr_type = BLE_ADDR_RANDOM;
+     BD_ADDR     bda;
+-    UINT8       *pp = (UINT8 *)p + 1;
++    UINT8       *pp = (UINT8 *)p;
+     UINT8           evt_type;
+
+     BTM_TRACE_EVENT ("btm_ble_resolve_random_addr_on_adv ");
+@@ -966,6 +966,7 @@ static void btm_ble_resolve_random_addr_on_adv(void *p_rec, void *p)
+             // Assign the original address to be the current report address
+             memcpy(bda, match_rec->ble.pseudo_addr, BD_ADDR_LEN);
+         }
++        addr_type = match_rec->ble.ble_addr_type;
+     }
+
+     btm_ble_process_adv_pkt_cont(bda, addr_type, evt_type, pp);
+@@ -3154,6 +3155,10 @@ void btm_ble_process_adv_pkt (UINT8 *p_data)
+     STREAM_TO_UINT8(num_reports, p);
+
+     while (num_reports--) {
++#if (defined BLE_PRIVACY_SPT && BLE_PRIVACY_SPT == TRUE)
++        /* Save current report start position for address resolution callback */
++        UINT8 *pp = p;
++#endif
+         /* Extract inquiry results */
+         STREAM_TO_UINT8    (evt_type, p);
+         STREAM_TO_UINT8    (addr_type, p);
+@@ -3174,7 +3179,7 @@ void btm_ble_process_adv_pkt (UINT8 *p_data)
+         //                             bda[0],bda[1],bda[2],bda[3],bda[4],bda[5]);
+         /* always do RRA resolution on host */
+         if (!match && BTM_BLE_IS_RESOLVE_BDA(bda)) {
+-            btm_ble_resolve_random_addr(bda, btm_ble_resolve_random_addr_on_adv, p_data);
++            btm_ble_resolve_random_addr(bda, btm_ble_resolve_random_addr_on_adv, pp);
+         } else
+ #endif
+         btm_ble_process_adv_pkt_cont(bda, addr_type, evt_type, p);
+--
+2.54.0
