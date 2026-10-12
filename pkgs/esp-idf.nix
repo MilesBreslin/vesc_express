@@ -32,5 +32,7 @@ esp-idf.overrideAttrs (old: {
     ./patches/0001-feat-ble-bluedroid-harden-LE-bond-handling-across-en.patch
     ./patches/0002-feat-ble-bluedroid-reject-weaker-LE-re-pairing.patch
     ./patches/0004-fix-ble-bluedroid-host-rpa-resolution.patch
+    ./patches/0006-preserve-peer-pid-across-bonded-repair.patch
+    ./patches/0008-keep-ble-keys-on-encrypted-reconnect.patch
   ];
 })

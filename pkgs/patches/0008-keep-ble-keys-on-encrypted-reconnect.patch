@@ -1,0 +1,28 @@
+From 269d1768e1fbc8554a8603ef8f8320487ec3563f Mon Sep 17 00:00:00 2001
+From: Miles Breslin <milesbreslin@gmail.com>
+Date: Sun, 11 Oct 2026 20:02:36 -0700
+Subject: [PATCH] Keep BLE keys on encrypted reconnect
+
+Restrict replacement-bond clearing to encryption after an SMP Pairing
+Request. Existing-LTK reconnects keep their complete record.
+---
+ components/bt/host/bluedroid/stack/smp/smp_act.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_act.c b/components/bt/host/bluedroid/stack/smp/smp_act.c
+index 3a8d224..f0fc2f7 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_act.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_act.c
+@@ -1376,7 +1376,11 @@ void smp_check_auth_req(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+            than when the Pairing Request is exchanged keeps the old key in place for a
+            pairing that never completes. */
+         tBTM_SEC_DEV_REC *p_dev_rec = btm_find_dev(p_cb->pairing_bda);
+-        if (p_dev_rec) {
++        /* Existing-LTK reconnects enter this action too. Only a Pairing
++           Request sets ENC_AFTER_PAIR and authorizes bond replacement. */
++        BOOLEAN replace_bond =
++            (p_cb->flags & SMP_PAIR_FLAG_ENC_AFTER_PAIR) != 0;
++        if (replace_bond && p_dev_rec) {
+             if (p_dev_rec->ble.key_type & (BTM_LE_KEY_PENC | BTM_LE_KEY_LENC)) {
+                 SMP_TRACE_DEBUG("LE replace bond after enc, BDA:0x%02X%02X%02X%02X%02X%02X",
+                                 p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],

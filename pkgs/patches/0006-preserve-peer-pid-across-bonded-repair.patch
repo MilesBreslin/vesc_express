@@ -1,0 +1,77 @@
+From 336298316529f9ad18d02e7e4032e745073caa24 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local>
+Date: Sun, 11 Oct 2026 17:26:59 -0700
+Subject: [PATCH] Preserve peer PID across bonded repair
+
+Retain the old peer identity key when a successful bonded repair
+replaces encryption keys without distributing a new identity key.
+---
+ .../bt/host/bluedroid/stack/smp/include/smp_int.h  |  4 ++++
+ components/bt/host/bluedroid/stack/smp/smp_act.c   | 11 +++++++++++
+ components/bt/host/bluedroid/stack/smp/smp_utils.c | 14 ++++++++++++++
+ 3 files changed, 29 insertions(+)
+
+diff --git a/components/bt/host/bluedroid/stack/smp/include/smp_int.h b/components/bt/host/bluedroid/stack/smp/include/smp_int.h
+index 4d5c0c6..9060dd5 100644
+--- a/components/bt/host/bluedroid/stack/smp/include/smp_int.h
++++ b/components/bt/host/bluedroid/stack/smp/include/smp_int.h
+@@ -318,6 +318,10 @@ typedef struct {
+     UINT8           peer_r_key;
+     UINT8           local_i_key;
+     UINT8           local_r_key;
++#if (BLE_INCLUDED == TRUE)
++    BOOLEAN         repairing_old_pid_valid;
++    tBTM_LE_PID_KEYS repairing_old_pid;
++#endif
+
+     BT_OCTET16      tk;
+     BT_OCTET16      ltk;
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_act.c b/components/bt/host/bluedroid/stack/smp/smp_act.c
+index e3f7634..117dbe1 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_act.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_act.c
+@@ -1406,6 +1406,17 @@ void smp_check_auth_req(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+                 SMP_TRACE_DEBUG("LE replace bond after enc, BDA:0x%02X%02X%02X%02X%02X%02X",
+                                 p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
+                                 p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++                /* A repair may replace the LTK without redistributing identity.
++                   Preserve only the peer PID across the normal whole-key clear. */
++                if (p_dev_rec->ble.key_type & BTM_LE_KEY_PID) {
++                    memcpy(p_cb->repairing_old_pid.irk,
++                           p_dev_rec->ble.keys.irk, BT_OCTET16_LEN);
++                    p_cb->repairing_old_pid.addr_type =
++                        p_dev_rec->ble.static_addr_type;
++                    memcpy(p_cb->repairing_old_pid.static_addr,
++                           p_dev_rec->ble.static_addr, BD_ADDR_LEN);
++                    p_cb->repairing_old_pid_valid = TRUE;
++                }
+             }
+             btm_sec_clear_ble_keys(p_dev_rec);
+         }
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_utils.c b/components/bt/host/bluedroid/stack/smp/smp_utils.c
+index 2d5b183..c0af611 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_utils.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_utils.c
+@@ -987,6 +987,20 @@ void smp_proc_pairing_cmpl(tSMP_CB *p_cb)
+ #endif
+ #if (BLE_INCLUDED == TRUE)
+     tBTM_SEC_DEV_REC    *p_rec = btm_find_dev (p_cb->pairing_bda);
++    /* New identity distribution wins. Otherwise, a completed bonded repair
++       keeps its old peer identity alongside the replacement encryption key. */
++    if (p_cb->status == SMP_SUCCESS && !p_cb->smp_over_br &&
++            p_cb->repairing_old_pid_valid &&
++            (p_cb->peer_auth_req & SMP_AUTH_BOND) &&
++            (p_cb->loc_auth_req & SMP_AUTH_BOND) && p_rec &&
++            (p_rec->ble.key_type & (BTM_LE_KEY_PENC | BTM_LE_KEY_LENC)) &&
++            !(p_rec->ble.key_type & BTM_LE_KEY_PID)) {
++        tBTM_LE_KEY_VALUE old_pid = {0};
++        old_pid.pid_key = p_cb->repairing_old_pid;
++        p_cb->repairing_old_pid_valid = FALSE;
++        btm_sec_save_le_key(p_cb->pairing_bda, BTM_LE_KEY_PID,
++                            &old_pid, TRUE);
++    }
+     if (p_cb->status == SMP_SUCCESS) {
+         evt_data.cmplt.sec_level = p_cb->sec_level;
+         if (p_cb->auth_mode) { // the first encryption
+--
+2.54.0
