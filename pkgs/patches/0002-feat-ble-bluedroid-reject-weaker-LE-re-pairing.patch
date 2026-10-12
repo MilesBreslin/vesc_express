@@ -1,0 +1,618 @@
+From aaa7312c2622c7a2b3f3be52bea5dd79473e2f5b Mon Sep 17 00:00:00 2001
+From: Zhi Wei Jian <zhiweijian@espressif.com>
+Date: Fri, 4 Sep 2026 11:03:49 +0800
+Subject: [PATCH] feat(ble/bluedroid): reject LE re-pairing that weakens an
+ existing bond
+
+Add smp_repairing_is_allowed() behind BT_BLE_SMP_HARDENED_REPAIRING so a
+peer cannot replace an existing bond with one that has less MITM
+protection, no Secure Connections, or a shorter key. Compare a preceding
+Security Request against the pairing command AuthReq, not the
+association-model result, and always allow first pairing.
+
+A refusal keeps the stored bond. Pairing-failure erase is split by link
+role: default is erase as Central and keep as Peripheral.
+
+Closes BLERP (NDSS 2026) V3, V4 and V6.
+
+Adapted to the ESP-IDF 5.5.4 file contexts.
+---
+ components/bt/host/bluedroid/Kconfig.in       |  81 ++++++++++++++
+ .../bt/host/bluedroid/bta/dm/bta_dm_act.c     |  47 +++++++-
+ .../host/bluedroid/bta/include/bta/bta_api.h  |   6 ++
+ .../bt/host/bluedroid/btc/core/btc_dm.c       |  45 +++++++-
+ .../include/common/bluedroid_user_config.h    |  18 ++++
+ .../common/include/common/bt_target.h         |  36 +++++--
+ .../bluedroid/stack/include/stack/btm_api.h   |   3 +
+ .../bluedroid/stack/include/stack/smp_api.h   |   3 +
+ .../bluedroid/stack/smp/include/smp_int.h     |   9 ++
+ .../bt/host/bluedroid/stack/smp/smp_act.c     |  34 ++++++
+ .../bt/host/bluedroid/stack/smp/smp_utils.c   | 102 ++++++++++++++++++
+ 11 files changed, 369 insertions(+), 15 deletions(-)
+
+diff --git a/components/bt/host/bluedroid/Kconfig.in b/components/bt/host/bluedroid/Kconfig.in
+index 513a98c..fdd1282 100644
+--- a/components/bt/host/bluedroid/Kconfig.in
++++ b/components/bt/host/bluedroid/Kconfig.in
+@@ -467,6 +467,87 @@ config BT_BLE_SMP_BOND_NVS_FLASH
+     help
+         This select can save SMP bonding keys to nvs flash
+
++config BT_BLE_SMP_HARDENED_REPAIRING
++    bool "Reject re-pairing that weakens an existing bond"
++    depends on BT_BLE_SMP_ENABLE
++    default y
++    help
++        Controls whether a peer that is already bonded may replace that bond with a
++        weaker one.
++
++        Enabled: when a bond already exists for the peer, a new pairing procedure is
++        refused if it would end up with less MITM protection, without Secure Connections
++        while the stored bond used it, or with a shorter encryption key. The security
++        level announced in a Security Request is also enforced on the pairing that
++        follows it. The link is dropped along with the pairing so that a peer cannot keep
++        retrying with different parameters. The drawback is that a peer which
++        legitimately needs to re-pair at a lower level is refused for good, for instance
++        one whose IO capabilities changed so that Passkey Entry became Just Works. Such a
++        peer has to be unbonded by the application first, using
++        esp_ble_remove_bond_device(). A refusal from this check always keeps the stored
++        bond, even when BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL or
++        BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL is enabled, so a peer cannot
++        erase the baseline by requesting a downgrade.
++
++        Disabled: any peer can replace an existing bond with one at a lower security
++        level, without Secure Connections, or with a shorter encryption key, and no
++        authentication is needed to do so. These are the re-pairing downgrades described
++        by the BLERP paper as V3, V4 and V6. Only choose this if a peer really has to
++        re-pair at a lower level and the application cannot unbond it beforehand.
++
++config BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL
++    bool "Remove the stored bond when pairing fails as Central"
++    depends on BT_BLE_SMP_ENABLE
++    default y
++    help
++        Controls whether the bonding keys kept in NVS are erased when a BLE pairing
++        procedure fails while the local device is the Central (link-layer master) on
++        that connection. A failed encryption attempt is reported through the same
++        authentication complete path and counts as a failure here. This is the role
++        typically used by GATT Client applications.
++
++        Enabled: historical Central behaviour and the default, so applications that rely
++        on a failed pairing implicitly unbonding the peer keep working after an upgrade.
++        It also means every peer able to make pairing fail can drop the bond without any
++        authentication, by simply sending a Pairing Failed, by letting the 30 second SMP
++        timeout expire, or by disconnecting in the middle of the procedure. As Central,
++        that implicit unbond is also what recovers when the peer deleted the bond on its
++        side and answers LL_ENC_REQ with KEY_MISSING.
++
++        Disabled: the bond survives a failed pairing in the Central role and unbonding
++        becomes an explicit application decision through esp_ble_remove_bond_device().
++        A stale LTK then makes every following connection fail to encrypt until the
++        application unbonds from the ESP_GAP_BLE_AUTH_CMPL_EVT failure callback,
++        preferably after a few attempts rather than on the first one.
++
++        A downgrade refused by BT_BLE_SMP_HARDENED_REPAIRING never erases the bond,
++        regardless of this option.
++
++config BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL
++    bool "Remove the stored bond when pairing fails as Peripheral"
++    depends on BT_BLE_SMP_ENABLE
++    default n
++    help
++        Controls whether the bonding keys kept in NVS are erased when a BLE pairing
++        procedure fails while the local device is the Peripheral (link-layer slave) on
++        that connection. A failed encryption attempt is reported through the same
++        authentication complete path and counts as a failure here. This is the role
++        typically used by GATT Server applications.
++
++        Disabled (default): the bond survives a failed pairing in the Peripheral role.
++        Unbonding is an explicit application decision through esp_ble_remove_bond_device().
++        This avoids losing the bond when the user walks away mid-pairing, when the SMP
++        timeout expires, or when a peer sends Pairing Failed. Legitimate re-pairing from
++        a Central that deleted its own bond is still possible through a new Pairing
++        Request, as long as BT_BLE_SMP_HARDENED_REPAIRING does not refuse a downgrade.
++
++        Enabled: restores the historical behaviour where any pairing failure as
++        Peripheral erases the NVS bond. Prefer this only if the application depends on
++        that implicit unbond and cannot call esp_ble_remove_bond_device() itself.
++
++        A downgrade refused by BT_BLE_SMP_HARDENED_REPAIRING never erases the bond,
++        regardless of this option.
++
+ config BT_BLE_SMP_UNBOND_ON_KEY_MISSING
+     bool "Drop the local LE keys when the peer reports it has no key"
+     depends on BT_BLE_SMP_ENABLE
+diff --git a/components/bt/host/bluedroid/bta/dm/bta_dm_act.c b/components/bt/host/bluedroid/bta/dm/bta_dm_act.c
+index 4f6f496..f02a6ce 100644
+--- a/components/bt/host/bluedroid/bta/dm/bta_dm_act.c
++++ b/components/bt/host/bluedroid/bta/dm/bta_dm_act.c
+@@ -4892,6 +4892,18 @@ static UINT8 bta_dm_ble_smp_cback (tBTM_LE_EVT event, BD_ADDR bda, tBTM_LE_EVT_D
+         bdcpy(sec_event.auth_cmpl.bd_addr, bda);
+ #if BLE_INCLUDED == TRUE
+         BTM_ReadDevInfo(bda, &sec_event.auth_cmpl.dev_type, &sec_event.auth_cmpl.addr_type);
++        {
++            /* BTM_GetRole() is BR/EDR-only; take the LE role from the ACL or sec record. */
++            tACL_CONN *p_acl = btm_bda_to_acl(bda, BT_TRANSPORT_LE);
++            if (p_acl != NULL) {
++                sec_event.auth_cmpl.is_central = (p_acl->link_role == HCI_ROLE_MASTER);
++            } else {
++                tBTM_SEC_DEV_REC *p_dev_rec = btm_find_dev(bda);
++                if (p_dev_rec != NULL) {
++                    sec_event.auth_cmpl.is_central = p_dev_rec->role_master;
++                }
++            }
++        }
+ #endif
+         p_name = BTM_SecReadDevName(bda);
+         if (p_name != NULL) {
+@@ -4901,11 +4913,38 @@ static UINT8 bta_dm_ble_smp_cback (tBTM_LE_EVT event, BD_ADDR bda, tBTM_LE_EVT_D
+             sec_event.auth_cmpl.bd_name[0] = '\0';
+         }
+         if (p_data->complt.reason != 0) {
++            BOOLEAN remove_bond = FALSE;
++
+             sec_event.auth_cmpl.fail_reason = BTA_DM_AUTH_CONVERT_SMP_CODE(((UINT8)p_data->complt.reason));
+-            /* delete this device entry from Sec Dev DB */
+-            APPL_TRACE_WARNING("%s remove bond,rsn %d, BDA:0x%02X%02X%02X%02X%02X%02X", __func__, sec_event.auth_cmpl.fail_reason,
+-                            bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
+-            bta_dm_remove_sec_dev_entry(bda);
++            sec_event.auth_cmpl.keep_bond = p_data->complt.keep_bond;
++            if (p_data->complt.keep_bond) {
++                /* Local policy refused the procedure (hardened re-pairing). The bond is
++                   what the check protects, so leave the Sec Dev DB and NVS alone. */
++                APPL_TRACE_WARNING("%s keep bond after local refusal,rsn %d, BDA:0x%02X%02X%02X%02X%02X%02X",
++                                   __func__, sec_event.auth_cmpl.fail_reason,
++                                   bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
++            } else if (sec_event.auth_cmpl.is_central) {
++#if (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL == TRUE)
++                remove_bond = TRUE;
++#endif
++            } else {
++#if (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL == TRUE)
++                remove_bond = TRUE;
++#endif
++            }
++            if (remove_bond) {
++                /* delete this device entry from Sec Dev DB */
++                APPL_TRACE_WARNING("%s remove bond,rsn %d, role=%s, BDA:0x%02X%02X%02X%02X%02X%02X",
++                                   __func__, sec_event.auth_cmpl.fail_reason,
++                                   sec_event.auth_cmpl.is_central ? "central" : "peripheral",
++                                   bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
++                bta_dm_remove_sec_dev_entry(bda);
++            } else if (!p_data->complt.keep_bond) {
++                APPL_TRACE_WARNING("%s keep bond after pairing fail,rsn %d, role=%s, BDA:0x%02X%02X%02X%02X%02X%02X",
++                                   __func__, sec_event.auth_cmpl.fail_reason,
++                                   sec_event.auth_cmpl.is_central ? "central" : "peripheral",
++                                   bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
++            }
+         } else {
+             sec_event.auth_cmpl.success = TRUE;
+             if (!p_data->complt.smp_over_br) {
+diff --git a/components/bt/host/bluedroid/bta/include/bta/bta_api.h b/components/bt/host/bluedroid/bta/include/bta/bta_api.h
+index d8918fc..f3136f0 100644
+--- a/components/bt/host/bluedroid/bta/include/bta/bta_api.h
++++ b/components/bt/host/bluedroid/bta/include/bta/bta_api.h
+@@ -774,6 +774,12 @@ typedef struct {
+     tBT_DEVICE_TYPE dev_type;
+     UINT8           auth_mode;
+     BOOLEAN           sc_support;         /* Denotes if peer device supported secure connection while bonding. */
++    /* TRUE when the stack refused the procedure on purpose (hardened re-pairing)
++       and the existing bond must not be erased. */
++    BOOLEAN         keep_bond;
++    /* TRUE when the local device was Central (HCI master) for this LE procedure.
++       Used with REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL / _AS_PERIPHERAL. */
++    BOOLEAN         is_central;
+ } tBTA_DM_AUTH_CMPL;
+
+
+diff --git a/components/bt/host/bluedroid/btc/core/btc_dm.c b/components/bt/host/bluedroid/btc/core/btc_dm.c
+index 02b5a16..e9219fd 100644
+--- a/components/bt/host/bluedroid/btc/core/btc_dm.c
++++ b/components/bt/host/bluedroid/btc/core/btc_dm.c
+@@ -167,6 +167,8 @@ void btc_dm_get_ble_local_keys(tBTA_DM_BLE_LOCAL_KEY_MASK *p_key_mask, BT_OCTET1
+ }
+
+
++#if (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL == TRUE) || \
++    (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL == TRUE)
+ static void btc_dm_remove_ble_bonding_keys(void)
+ {
+     bt_bdaddr_t bd_addr;
+@@ -182,6 +184,16 @@ static void btc_dm_remove_ble_bonding_keys(void)
+     btc_storage_remove_ble_bonding_keys(&bd_addr);
+ }
+
++/* Role-specific erase policy. keep_bond (hardened re-pairing refusal) always wins. */
++static BOOLEAN btc_dm_ble_should_remove_bond_on_fail(BOOLEAN is_central)
++{
++    if (is_central) {
++        return (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL == TRUE);
++    }
++    return (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL == TRUE);
++}
++#endif
++
+ #if BLE_SMP_BOND_NVS_FLASH
+ static void btc_dm_save_ble_bonding_keys(void)
+ {
+@@ -283,24 +295,51 @@ static void btc_dm_ble_auth_cmpl_evt (tBTA_DM_AUTH_CMPL *p_auth_cmpl)
+ #endif
+     } else {
+         /*Map the HCI fail reason  to  bt status  */
++        BOOLEAN remove_bond = FALSE;
++
+         switch (p_auth_cmpl->fail_reason) {
+         case BTA_DM_AUTH_SMP_PAIR_AUTH_FAIL:
+         case BTA_DM_AUTH_SMP_CONFIRM_VALUE_FAIL:
+-            btc_dm_remove_ble_bonding_keys();
+             status = BT_STATUS_AUTH_FAILURE;
++            remove_bond = TRUE;
+             break;
+         case BTA_DM_AUTH_SMP_PAIR_NOT_SUPPORT:
+             status = BT_STATUS_AUTH_REJECTED;
+             break;
+         default:
+-            BTC_TRACE_WARNING ("%s, remove bond in flash bd_addr: %08x%04x", __func__,
++            BTC_TRACE_WARNING ("%s, pairing failed for bd_addr: %08x%04x", __func__,
+                                 (p_auth_cmpl->bd_addr[0] << 24) + (p_auth_cmpl->bd_addr[1] << 16) + (p_auth_cmpl->bd_addr[2] << 8) + p_auth_cmpl->bd_addr[3],
+                                 (p_auth_cmpl->bd_addr[4] << 8) + p_auth_cmpl->bd_addr[5]);
+-            btc_dm_remove_ble_bonding_keys();
+             status =  BT_STATUS_FAIL;
++            remove_bond = TRUE;
+             break;
+         }
+
++        if (p_auth_cmpl->keep_bond) {
++            /* Hardened re-pairing refused this procedure; never erase the baseline. */
++            BTC_TRACE_WARNING("%s, keeping bond after local refusal, fail_reason=%d, role=%s, bd_addr: %08x%04x",
++                              __func__, p_auth_cmpl->fail_reason,
++                              p_auth_cmpl->is_central ? "central" : "peripheral",
++                              (p_auth_cmpl->bd_addr[0] << 24) + (p_auth_cmpl->bd_addr[1] << 16) + (p_auth_cmpl->bd_addr[2] << 8) + p_auth_cmpl->bd_addr[3],
++                              (p_auth_cmpl->bd_addr[4] << 8) + p_auth_cmpl->bd_addr[5]);
++#if (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL == TRUE) || \
++    (BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL == TRUE)
++        } else if (remove_bond && btc_dm_ble_should_remove_bond_on_fail(p_auth_cmpl->is_central)) {
++            BTC_TRACE_WARNING("remove NVS bond, rsn %d, role=%s, bd_addr: %08x%04x",
++                              p_auth_cmpl->fail_reason,
++                              p_auth_cmpl->is_central ? "central" : "peripheral",
++                              (p_auth_cmpl->bd_addr[0] << 24) + (p_auth_cmpl->bd_addr[1] << 16) + (p_auth_cmpl->bd_addr[2] << 8) + p_auth_cmpl->bd_addr[3],
++                              (p_auth_cmpl->bd_addr[4] << 8) + p_auth_cmpl->bd_addr[5]);
++            btc_dm_remove_ble_bonding_keys();
++#endif
++        } else if (remove_bond) {
++            BTC_TRACE_WARNING("%s, keeping bond after pairing fail, role=%s, unbond with esp_ble_remove_bond_device(), bd_addr: %08x%04x",
++                              __func__,
++                              p_auth_cmpl->is_central ? "central" : "peripheral",
++                              (p_auth_cmpl->bd_addr[0] << 24) + (p_auth_cmpl->bd_addr[1] << 16) + (p_auth_cmpl->bd_addr[2] << 8) + p_auth_cmpl->bd_addr[3],
++                              (p_auth_cmpl->bd_addr[4] << 8) + p_auth_cmpl->bd_addr[5]);
++        }
++
+     }
+
+ #if (CONFIG_BT_STACK_NO_LOG)
+diff --git a/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h b/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
+index 1b1e69c..2a76239 100644
+--- a/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
++++ b/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
+@@ -206,6 +206,24 @@
+ #define UC_BT_BLE_50_FEATURES_SUPPORTED            FALSE
+ #endif
+
++#ifdef CONFIG_BT_BLE_SMP_HARDENED_REPAIRING
++#define UC_BT_BLE_SMP_HARDENED_REPAIRING           CONFIG_BT_BLE_SMP_HARDENED_REPAIRING
++#else
++#define UC_BT_BLE_SMP_HARDENED_REPAIRING           FALSE
++#endif
++
++#ifdef CONFIG_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL
++#define UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL     CONFIG_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL
++#else
++#define UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL     FALSE
++#endif
++
++#ifdef CONFIG_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL
++#define UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL  CONFIG_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL
++#else
++#define UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL  FALSE
++#endif
++
+
+ #ifdef CONFIG_BT_BLE_SMP_UNBOND_ON_KEY_MISSING
+ #define UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING        CONFIG_BT_BLE_SMP_UNBOND_ON_KEY_MISSING
+diff --git a/components/bt/host/bluedroid/common/include/common/bt_target.h b/components/bt/host/bluedroid/common/include/common/bt_target.h
+index 74b0718..8084850 100644
+--- a/components/bt/host/bluedroid/common/include/common/bt_target.h
++++ b/components/bt/host/bluedroid/common/include/common/bt_target.h
+@@ -230,14 +230,6 @@
+ ** BLE features
+ **
+ ******************************************************************************/
+-
+-/* Discard the local LE keys when the peer rejects encryption with "PIN or Key Missing". */
+-#if (UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING == TRUE)
+-#define BLE_SMP_UNBOND_ON_KEY_MISSING TRUE
+-#else
+-#define BLE_SMP_UNBOND_ON_KEY_MISSING FALSE
+-#endif
+-
+ #if (UC_BT_BLE_ENABLED ==TRUE)
+ #define BLE_INCLUDED              TRUE
+ #else
+@@ -250,6 +242,34 @@
+ #define BLE_50_FEATURE_SUPPORT   FALSE
+ #endif
+
++/* Refuse a re-pairing that would end up weaker than the bond it replaces. */
++#if (UC_BT_BLE_SMP_HARDENED_REPAIRING == TRUE)
++#define BLE_SMP_HARDENED_REPAIRING    TRUE
++#else
++#define BLE_SMP_HARDENED_REPAIRING    FALSE
++#endif
++
++/* Erase the NVS bond when pairing/encryption fails while local device is Central. */
++#if (UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL == TRUE)
++#define BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL TRUE
++#else
++#define BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL FALSE
++#endif
++
++/* Erase the NVS bond when pairing/encryption fails while local device is Peripheral. */
++#if (UC_BT_BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL == TRUE)
++#define BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL TRUE
++#else
++#define BLE_SMP_REMOVE_BOND_ON_PAIR_FAIL_AS_PERIPHERAL FALSE
++#endif
++
++/* Discard the local LE keys when the peer rejects encryption with "PIN or Key Missing". */
++#if (UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING == TRUE)
++#define BLE_SMP_UNBOND_ON_KEY_MISSING TRUE
++#else
++#define BLE_SMP_UNBOND_ON_KEY_MISSING FALSE
++#endif
++
+ #if (UC_BT_BLE_ENABLED ==TRUE)
+ #if (UC_BT_BLE_42_FEATURES_SUPPORTED == TRUE || BLE_50_FEATURE_SUPPORT == FALSE)
+ #define BLE_42_FEATURE_SUPPORT   TRUE
+diff --git a/components/bt/host/bluedroid/stack/include/stack/btm_api.h b/components/bt/host/bluedroid/stack/include/stack/btm_api.h
+index 3f932d0..9806e21 100644
+--- a/components/bt/host/bluedroid/stack/include/stack/btm_api.h
++++ b/components/bt/host/bluedroid/stack/include/stack/btm_api.h
+@@ -1775,6 +1775,9 @@ typedef struct {
+     BOOLEAN is_pair_cancel;
+     BOOLEAN smp_over_br;
+     tSMP_AUTH_REQ auth_mode;
++    /* Mirrors tSMP_CMPL.keep_bond; layouts must stay identical because
++       btm_proc_smp_cback casts tSMP_EVT_DATA to tBTM_LE_EVT_DATA. */
++    BOOLEAN keep_bond;
+ } tBTM_LE_COMPLT;
+ #endif
+
+diff --git a/components/bt/host/bluedroid/stack/include/stack/smp_api.h b/components/bt/host/bluedroid/stack/include/stack/smp_api.h
+index 11d432e..1965067 100644
+--- a/components/bt/host/bluedroid/stack/include/stack/smp_api.h
++++ b/components/bt/host/bluedroid/stack/include/stack/smp_api.h
+@@ -225,6 +225,9 @@ typedef struct {
+     BOOLEAN is_pair_cancel;
+     BOOLEAN smp_over_br;
+     tSMP_AUTH_REQ auth_mode;
++    /* TRUE when the local stack refused the procedure (e.g. hardened re-pairing)
++       and the stored bond must be kept regardless of REMOVE_BOND_ON_PAIR_FAIL_AS_*. */
++    BOOLEAN keep_bond;
+ } tSMP_CMPL;
+
+ typedef struct {
+diff --git a/components/bt/host/bluedroid/stack/smp/include/smp_int.h b/components/bt/host/bluedroid/stack/smp/include/smp_int.h
+index ca2dbfa..4d5c0c6 100644
+--- a/components/bt/host/bluedroid/stack/smp/include/smp_int.h
++++ b/components/bt/host/bluedroid/stack/smp/include/smp_int.h
+@@ -338,6 +338,12 @@ typedef struct {
+     UINT32          static_passkey;
+     BOOLEAN         accept_specified_sec_auth;
+     tSMP_AUTH_REQ   origin_loc_auth_req;
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++    BOOLEAN         sec_req_rcvd;       /* peer asked for security through a Security Request */
++    tSMP_AUTH_REQ   sec_req_auth_req;   /* AuthReq of that Security Request, peer_auth_req gets
++                                           overwritten by the Pairing Response that follows */
++    BOOLEAN         keep_bond_on_fail;  /* set when smp_repairing_is_allowed() refuses the procedure */
++#endif
+ } tSMP_CB;
+
+ /* Server Action functions are of this type */
+@@ -487,6 +493,9 @@ extern BOOLEAN smp_encrypt_data (UINT8 *key, UINT8 key_len,
+                                  UINT8 *plain_text, UINT8 pt_len,
+                                  tSMP_ENC *p_out);
+ extern BOOLEAN smp_command_has_invalid_parameters(tSMP_CB *p_cb);
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++extern BOOLEAN smp_repairing_is_allowed(tSMP_CB *p_cb, UINT8 *p_reason);
++#endif
+ extern void smp_reject_unexpected_pairing_command(BD_ADDR bd_addr);
+ extern tSMP_ASSO_MODEL smp_select_association_model(tSMP_CB *p_cb);
+ extern void smp_reverse_array(UINT8 *arr, UINT8 len);
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_act.c b/components/bt/host/bluedroid/stack/smp/smp_act.c
+index 9ae94c9..377b274 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_act.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_act.c
+@@ -478,6 +478,13 @@ void smp_proc_sec_req(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+             reason = SMP_PAIR_AUTH_FAIL;
+             smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &reason);
+         } else {
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++            /* Remember what the peer asked for here: peer_auth_req is overwritten by the
++               Pairing Response that follows, and smp_repairing_is_allowed() has to compare
++               the two to catch a peer that announces a high level and then downgrades. */
++            p_cb->sec_req_rcvd = TRUE;
++            p_cb->sec_req_auth_req = auth_req;
++#endif
+             /* initialize local i/r key to be default keys */
+             p_cb->peer_auth_req = auth_req;
+             p_cb->local_r_key = p_cb->local_i_key = SMP_SEC_DEFAULT_KEY ;
+@@ -608,6 +615,15 @@ void smp_proc_pair_cmd(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+                 auth |= SMP_AUTH_GEN_BOND;
+             }
+             p_cb->auth_mode = auth;
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++            if (!smp_repairing_is_allowed(p_cb, &reason)) {
++                if (BTM_IsAclConnectionUp(p_cb->pairing_bda, BT_TRANSPORT_LE)) {
++                    btm_remove_acl (p_cb->pairing_bda, BT_TRANSPORT_LE);
++                }
++                smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &reason);
++                return;
++            }
++#endif
+             if (p_cb->accept_specified_sec_auth) {
+                 if ((auth & p_cb->origin_loc_auth_req) != p_cb->origin_loc_auth_req ) {
+                     SMP_TRACE_ERROR("%s pairing failed - slave requires auth is 0x%x but peer auth is 0x%x local auth is 0x%x",
+@@ -647,6 +663,15 @@ void smp_proc_pair_cmd(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+             auth |= SMP_AUTH_GEN_BOND;
+         }
+         p_cb->auth_mode = auth;
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++        if (!smp_repairing_is_allowed(p_cb, &reason)) {
++            if (BTM_IsAclConnectionUp(p_cb->pairing_bda, BT_TRANSPORT_LE)) {
++                btm_remove_acl (p_cb->pairing_bda, BT_TRANSPORT_LE);
++            }
++            smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &reason);
++            return;
++        }
++#endif
+         if (p_cb->accept_specified_sec_auth) {
+             if ((auth & p_cb->origin_loc_auth_req) != p_cb->origin_loc_auth_req ) {
+                 SMP_TRACE_ERROR("%s pairing failed - master requires auth is 0x%x but peer auth is 0x%x local auth is 0x%x",
+@@ -1580,6 +1605,15 @@ void smp_process_io_response(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+             auth |= SMP_AUTH_GEN_BOND;
+         }
+         p_cb->auth_mode = auth;
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++        if (!smp_repairing_is_allowed(p_cb, &reason)) {
++            if (BTM_IsAclConnectionUp(p_cb->pairing_bda, BT_TRANSPORT_LE)) {
++                btm_remove_acl (p_cb->pairing_bda, BT_TRANSPORT_LE);
++            }
++            smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &reason);
++            return;
++        }
++#endif
+         if (p_cb->accept_specified_sec_auth) {
+             if ((auth & p_cb->origin_loc_auth_req) != p_cb->origin_loc_auth_req ) {
+                 SMP_TRACE_ERROR("pairing failed - slave requires auth is 0x%x but peer auth is 0x%x local auth is 0x%x",
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_utils.c b/components/bt/host/bluedroid/stack/smp/smp_utils.c
+index f4d0987..2d5b183 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_utils.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_utils.c
+@@ -981,6 +981,10 @@ void smp_proc_pairing_cmpl(tSMP_CB *p_cb)
+     evt_data.cmplt.reason = p_cb->status;
+     evt_data.cmplt.smp_over_br = p_cb->smp_over_br;
+     evt_data.cmplt.auth_mode = 0;
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++    /* Copied before smp_reset_control_value() zeros the control block. */
++    evt_data.cmplt.keep_bond = p_cb->keep_bond_on_fail;
++#endif
+ #if (BLE_INCLUDED == TRUE)
+     tBTM_SEC_DEV_REC    *p_rec = btm_find_dev (p_cb->pairing_bda);
+     if (p_cb->status == SMP_SUCCESS) {
+@@ -1222,6 +1226,104 @@ BOOLEAN smp_parameter_unconditionally_invalid(tSMP_CB *p_cb)
+     return FALSE;
+ }
+
++#if (BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE)
++/*******************************************************************************
++**
++** Function         smp_repairing_is_allowed
++**
++** Description      Called once the association model of a pairing procedure is known.
++**                  First pairing (no stored bond) is always allowed. On re-pairing,
++**                  refuses when the peer drops AuthReq bits it announced in a Security
++**                  Request, when the association model would weaken MITM/SC relative to
++**                  the stored bond, or when the encryption key would get shorter.
++**
++** Returns          TRUE when the pairing may continue. Otherwise FALSE, and *p_reason
++**                  holds the SMP failure code to report to the peer. Also sets
++**                  p_cb->keep_bond_on_fail so BTA/BTC keep the stored bond even when
++**                  REMOVE_BOND_ON_PAIR_FAIL_AS_CENTRAL / _AS_PERIPHERAL is enabled. The
++**                  caller should drop the link so the peer cannot retry with other
++**                  parameters until one gets through.
++**
++*******************************************************************************/
++BOOLEAN smp_repairing_is_allowed(tSMP_CB *p_cb, UINT8 *p_reason)
++{
++    const UINT16 level_bits = SMP_AUTH_YN_BIT | SMP_SC_SUPPORT_BIT;
++    tBTM_SEC_DEV_REC *p_dev_rec;
++    UINT16 new_auth = p_cb->auth_mode;
++    UINT16 sec_req_level;
++    UINT16 old_auth;
++    UINT8 new_key_size;
++
++    p_dev_rec = btm_find_dev(p_cb->pairing_bda);
++    if (p_dev_rec == NULL ||
++            !(p_dev_rec->ble.key_type & (BTM_LE_KEY_PENC | BTM_LE_KEY_LENC))) {
++        /* First pairing with this peer, there is nothing to downgrade. A Security
++           Request that outruns what IO capabilities can deliver must not block it. */
++        SMP_TRACE_DEBUG("LE first pairing, skip downgrade check, BDA:0x%02X%02X%02X%02X%02X%02X",
++                        p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                        p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++        return TRUE;
++    }
++
++    /* A Security Request carries no authentication, but the pairing command that
++       follows must still claim the level it announced, otherwise the peer can
++       advertise a high level to force a re-pairing and then drop those bits in the
++       Pairing Response. Compare against peer_auth_req (the pairing command), not
++       against the association-model result: IO capabilities that force Just Works
++       are a local limitation, not a peer AuthReq downgrade. Only bits this side
++       also asked for are enforced. */
++    sec_req_level = p_cb->sec_req_auth_req & p_cb->loc_auth_req & level_bits;
++
++    if (p_cb->sec_req_rcvd &&
++            ((p_cb->peer_auth_req & sec_req_level) != sec_req_level)) {
++        SMP_TRACE_ERROR("LE re-pair refuse: SR 0x%02x pair 0x%02x loc 0x%02x, BDA:0x%02X%02X%02X%02X%02X%02X",
++                        p_cb->sec_req_auth_req, p_cb->peer_auth_req, p_cb->loc_auth_req,
++                        p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                        p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++        *p_reason = SMP_PAIR_AUTH_FAIL;
++        /* Keep the existing bond: this is a local policy refusal, not a peer that
++           proved the stored keys are gone. BTC must not erase NVS on this path. */
++        p_cb->keep_bond_on_fail = TRUE;
++        return FALSE;
++    }
++
++    old_auth = p_dev_rec->ble.auth_mode;
++    /* Bonds created before auth_mode was recorded, or restored from an older NVS layout,
++       only carry the security level. */
++    if (p_dev_rec->ble.keys.sec_level >= SMP_SEC_AUTHENTICATED) {
++        old_auth |= SMP_AUTH_YN_BIT;
++    }
++
++    if ((new_auth & old_auth & level_bits) != (old_auth & level_bits)) {
++        SMP_TRACE_ERROR("LE re-pair refuse: auth 0x%02x < bonded 0x%02x, BDA:0x%02X%02X%02X%02X%02X%02X",
++                        new_auth, old_auth,
++                        p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                        p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++        *p_reason = SMP_PAIR_AUTH_FAIL;
++        p_cb->keep_bond_on_fail = TRUE;
++        return FALSE;
++    }
++
++    new_key_size = (p_cb->loc_enc_size < p_cb->peer_enc_size) ? p_cb->loc_enc_size
++                                                              : p_cb->peer_enc_size;
++    if (new_key_size < p_dev_rec->ble.keys.key_size) {
++        SMP_TRACE_ERROR("LE re-pair refuse: key size %d < bonded %d, BDA:0x%02X%02X%02X%02X%02X%02X",
++                        new_key_size, p_dev_rec->ble.keys.key_size,
++                        p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                        p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++        *p_reason = SMP_ENC_KEY_SIZE;
++        p_cb->keep_bond_on_fail = TRUE;
++        return FALSE;
++    }
++
++    SMP_TRACE_DEBUG("LE re-pair allowed: auth 0x%02x->0x%02x key %d->%d, BDA:0x%02X%02X%02X%02X%02X%02X",
++                    old_auth, new_auth, p_dev_rec->ble.keys.key_size, new_key_size,
++                    p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                    p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++    return TRUE;
++}
++#endif  ///BLE_INCLUDED == TRUE && BLE_SMP_HARDENED_REPAIRING == TRUE
++
+ /*******************************************************************************
+ **
+ ** Function         smp_reject_unexpected_pairing_command
+--
+2.54.0

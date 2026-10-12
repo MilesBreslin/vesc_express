@@ -1,0 +1,207 @@
+From 93f8ae845be789d98608fa4bd7f00a73b8318a8c Mon Sep 17 00:00:00 2001
+From: Zhi Wei Jian <zhiweijian@espressif.com>
+Date: Fri, 4 Sep 2026 11:03:49 +0800
+Subject: [PATCH] fix(ble/bluedroid): harden LE bond handling across encryption
+
+Keep the existing bond until the new pairing is encrypted, and on encryption
+failure drop the link instead of clearing keys. Recovering from a peer that
+really deleted the bond is opt-in through BT_BLE_SMP_UNBOND_ON_KEY_MISSING.
+
+Closes BLERP (NDSS 2026) V5, and stops an unauthenticated Pairing Request
+from dropping the stored keys (V2 exploitation).
+
+Adapted to the ESP-IDF 5.5.4 file contexts.
+---
+ components/bt/host/bluedroid/Kconfig.in       | 22 ++++++++++++
+ .../include/common/bluedroid_user_config.h    |  7 ++++
+ .../common/include/common/bt_target.h         |  8 +++++
+ .../bt/host/bluedroid/stack/btm/btm_sec.c     | 32 ++++++++++++++---
+ .../bt/host/bluedroid/stack/smp/smp_act.c     | 35 ++++++++++++-------
+ 5 files changed, 88 insertions(+), 16 deletions(-)
+
+diff --git a/components/bt/host/bluedroid/Kconfig.in b/components/bt/host/bluedroid/Kconfig.in
+index 52a0ea6..513a98c 100644
+--- a/components/bt/host/bluedroid/Kconfig.in
++++ b/components/bt/host/bluedroid/Kconfig.in
+@@ -467,6 +467,28 @@ config BT_BLE_SMP_BOND_NVS_FLASH
+     help
+         This select can save SMP bonding keys to nvs flash
+
++config BT_BLE_SMP_UNBOND_ON_KEY_MISSING
++    bool "Drop the local LE keys when the peer reports it has no key"
++    depends on BT_BLE_SMP_ENABLE
++    default n
++    help
++        As Central, an encryption attempt using the stored LTK fails with "PIN or Key
++        Missing" when the peer has deleted the bond on its side. This option controls how
++        the stack reacts to that specific error.
++
++        Enabled: the local LE keys are discarded and the link is kept up, so the
++        application can re-pair straight away and recovers without user interaction. The
++        problem is that an impersonating device can report the same error, so a peer can
++        strip the stored security level without any authentication and then re-pair at a
++        weaker level. That is exactly the re-pairing downgrade the BLERP paper describes,
++        which is why this is not the default.
++
++        Disabled: the link is dropped and the keys are kept, so no peer can drop the bond
++        by refusing to encrypt. The problem is that the same stale LTK is then used again
++        on every following connection and encryption keeps failing, which never recovers
++        on its own. The application has to call esp_ble_remove_bond_device() from the
++        ESP_GAP_BLE_AUTH_CMPL_EVT failure callback to get out of it.
++
+ config BT_BLE_RPA_SUPPORTED
+     bool "Update RPA to Controller"
+     depends on (BT_BLE_SMP_ENABLE && ((BT_CONTROLLER_ENABLED && !SOC_BLE_DEVICE_PRIVACY_SUPPORTED) || BT_CONTROLLER_DISABLED)) # NOERROR
+diff --git a/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h b/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
+index d82ec6b..1b1e69c 100644
+--- a/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
++++ b/components/bt/host/bluedroid/common/include/common/bluedroid_user_config.h
+@@ -206,6 +206,13 @@
+ #define UC_BT_BLE_50_FEATURES_SUPPORTED            FALSE
+ #endif
+
++
++#ifdef CONFIG_BT_BLE_SMP_UNBOND_ON_KEY_MISSING
++#define UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING        CONFIG_BT_BLE_SMP_UNBOND_ON_KEY_MISSING
++#else
++#define UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING        FALSE
++#endif
++
+ #ifdef CONFIG_BT_BLE_42_FEATURES_SUPPORTED
+ #define UC_BT_BLE_42_FEATURES_SUPPORTED            CONFIG_BT_BLE_42_FEATURES_SUPPORTED
+ #else
+diff --git a/components/bt/host/bluedroid/common/include/common/bt_target.h b/components/bt/host/bluedroid/common/include/common/bt_target.h
+index 2766a27..74b0718 100644
+--- a/components/bt/host/bluedroid/common/include/common/bt_target.h
++++ b/components/bt/host/bluedroid/common/include/common/bt_target.h
+@@ -230,6 +230,14 @@
+ ** BLE features
+ **
+ ******************************************************************************/
++
++/* Discard the local LE keys when the peer rejects encryption with "PIN or Key Missing". */
++#if (UC_BT_BLE_SMP_UNBOND_ON_KEY_MISSING == TRUE)
++#define BLE_SMP_UNBOND_ON_KEY_MISSING TRUE
++#else
++#define BLE_SMP_UNBOND_ON_KEY_MISSING FALSE
++#endif
++
+ #if (UC_BT_BLE_ENABLED ==TRUE)
+ #define BLE_INCLUDED              TRUE
+ #else
+diff --git a/components/bt/host/bluedroid/stack/btm/btm_sec.c b/components/bt/host/bluedroid/stack/btm/btm_sec.c
+index 4dcfaff..7bacbd9 100644
+--- a/components/bt/host/bluedroid/stack/btm/btm_sec.c
++++ b/components/bt/host/bluedroid/stack/btm/btm_sec.c
+@@ -4175,12 +4175,36 @@ void btm_sec_encrypt_change (UINT16 handle, UINT8 status, UINT8 encr_enable)
+     }
+
+     if (p_acl && p_acl->transport == BT_TRANSPORT_LE) {
+-        if (status == HCI_ERR_KEY_MISSING || status == HCI_ERR_AUTH_FAILURE ||
+-                status == HCI_ERR_ENCRY_MODE_NOT_ACCEPTABLE) {
+-            p_dev_rec->sec_flags &= ~ (BTM_SEC_LE_LINK_KEY_KNOWN);
++        BOOLEAN disconnect = (status != HCI_SUCCESS);
++        BD_ADDR pseudo_addr;
++
++        /* btm_ble_link_encrypted() runs the SMP state machine and the upper layer
++           callbacks, which may retire p_dev_rec, so keep our own copy of the address. */
++        memcpy(pseudo_addr, p_dev_rec->ble.pseudo_addr, BD_ADDR_LEN);
++
++#if (BLE_SMP_UNBOND_ON_KEY_MISSING == TRUE)
++        /* The peer answered our LL_ENC_REQ saying it no longer holds the LTK. Forget our
++           copy and keep the link up so the application can pair again right away. This is
++           unauthenticated, an impersonator can report the same error to strip the stored
++           security level, which is why the option defaults to disabled. */
++        if (disconnect && status == HCI_ERR_KEY_MISSING && p_acl->link_role == BTM_ROLE_MASTER) {
++            BTM_TRACE_WARNING("%s peer reports no LTK, dropping the local LE keys\n", __func__);
++            p_dev_rec->sec_flags &= ~(BTM_SEC_LE_LINK_KEY_KNOWN);
+             p_dev_rec->ble.key_type = BTM_LE_KEY_NONE;
++            disconnect = FALSE;
++        }
++#endif  ///BLE_SMP_UNBOND_ON_KEY_MISSING == TRUE
++
++        btm_ble_link_encrypted(pseudo_addr, encr_enable);
++
++        /* A peer that refuses to encrypt must not be able to drop our bond, otherwise it
++           can strip the stored security level and then re-pair at a weaker one. Tear the
++           link down instead and keep the keys until the application unbonds. */
++        if (disconnect && BTM_IsAclConnectionUp(pseudo_addr, BT_TRANSPORT_LE)) {
++            BTM_TRACE_WARNING("%s LE encryption failed (status 0x%02x), disconnecting\n",
++                              __func__, status);
++            btm_remove_acl(pseudo_addr, BT_TRANSPORT_LE);
+         }
+-        btm_ble_link_encrypted(p_dev_rec->ble.pseudo_addr, encr_enable);
+         return;
+     } else {
+         /* BR/EDR connection, update the encryption key size to be 16 as always */
+diff --git a/components/bt/host/bluedroid/stack/smp/smp_act.c b/components/bt/host/bluedroid/stack/smp/smp_act.c
+index 1c88b8d..9ae94c9 100644
+--- a/components/bt/host/bluedroid/stack/smp/smp_act.c
++++ b/components/bt/host/bluedroid/stack/smp/smp_act.c
+@@ -257,13 +257,9 @@ void smp_send_pair_req(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+ {
+     SMP_TRACE_DEBUG("%s", __func__);
+
+-#if (BLE_INCLUDED == TRUE)
+-    tBTM_SEC_DEV_REC *p_dev_rec = btm_find_dev (p_cb->pairing_bda);
+-    /* erase all keys when master sends pairing req*/
+-    if (p_dev_rec) {
+-        btm_sec_clear_ble_keys(p_dev_rec);
+-    }
+-#endif  ///BLE_INCLUDED == TRUE
++    /* Any existing bond is replaced only once the new pairing is authenticated,
++       see smp_check_auth_req(). */
++
+     /* do not manipulate the key, let app decide,
+        leave out to BTM to mandate key distribution for bonding case */
+     smp_send_cmd(SMP_OPCODE_PAIRING_REQ, p_cb);
+@@ -562,13 +558,11 @@ void smp_proc_pair_cmd(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+ {
+     UINT8   *p = (UINT8 *)p_data;
+     UINT8   reason = SMP_ENC_KEY_SIZE;
+-    tBTM_SEC_DEV_REC *p_dev_rec = btm_find_dev (p_cb->pairing_bda);
+
+     SMP_TRACE_DEBUG("%s", __func__);
+-    /* erase all keys if it is slave proc pairing req*/
+-    if (p_dev_rec && (p_cb->role == HCI_ROLE_SLAVE)) {
+-        btm_sec_clear_ble_keys(p_dev_rec);
+-    }
++
++    /* Any existing bond is replaced only once the new pairing is authenticated, see
++       smp_check_auth_req(). An unauthenticated Pairing Request must not drop the bond. */
+
+     p_cb->flags |= SMP_PAIR_FLAG_ENC_AFTER_PAIR;
+
+@@ -584,6 +578,7 @@ void smp_proc_pair_cmd(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+         smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &reason);
+         return;
+     }
++
+     p_cb->accept_specified_sec_auth = bta_dm_co_ble_get_accept_auth_enable();
+     p_cb->origin_loc_auth_req = bta_dm_co_ble_get_auth_req();
+     if (p_cb->role == HCI_ROLE_SLAVE) {
+@@ -1350,6 +1345,22 @@ void smp_check_auth_req(tSMP_CB *p_cb, tSMP_INT_DATA *p_data)
+                     "(i-initiator r-responder)\n",
+                     __func__, enc_enable, p_cb->local_i_key, p_cb->local_r_key);
+     if (enc_enable == 1) {
++#if (BLE_INCLUDED == TRUE)
++        /* The new pairing has been authenticated and the link is now encrypted with the
++           freshly generated key, so the previous bond can be dropped. Doing it here rather
++           than when the Pairing Request is exchanged keeps the old key in place for a
++           pairing that never completes. */
++        tBTM_SEC_DEV_REC *p_dev_rec = btm_find_dev(p_cb->pairing_bda);
++        if (p_dev_rec) {
++            if (p_dev_rec->ble.key_type & (BTM_LE_KEY_PENC | BTM_LE_KEY_LENC)) {
++                SMP_TRACE_DEBUG("LE replace bond after enc, BDA:0x%02X%02X%02X%02X%02X%02X",
++                                p_cb->pairing_bda[0], p_cb->pairing_bda[1], p_cb->pairing_bda[2],
++                                p_cb->pairing_bda[3], p_cb->pairing_bda[4], p_cb->pairing_bda[5]);
++            }
++            btm_sec_clear_ble_keys(p_dev_rec);
++        }
++#endif  ///BLE_INCLUDED == TRUE
++
+         if (p_cb->le_secure_connections_mode_is_used) {
+             /* In LE SC mode LTK is used instead of STK and has to be always saved */
+             p_cb->local_i_key |= SMP_SEC_KEY_TYPE_ENC;
+--
+2.54.0

@@ -5,23 +5,31 @@
   python3,
 }:
 
-callPackage "${esp-dev}/pkgs/esp-idf" {
-  rev = "v5.5.4";
-  sha256 = "sha256-rItbBrwItkfJf8tKImAQsiXDR95sr0LqaM51gDZG/nI=";
-  # The upstream tool loader still lists Python 3.10 as a GDB runtime.
-  # Nixpkgs 26.05 removed it; none of the tools selected below use GDB.
-  callPackage =
-    fn: args:
-    callPackage fn (
-      lib.intersectAttrs (builtins.functionArgs (if builtins.isFunction fn then fn else import fn)) {
-        python310 = python3;
-      }
-      // args
-    );
-  toolsToInclude = [
-    "riscv32-esp-elf"
-    "xtensa-esp-elf"
-    "esp32ulp-elf"
-    "esp-rom-elfs"
+let
+  esp-idf = callPackage "${esp-dev}/pkgs/esp-idf" {
+    rev = "v5.5.4";
+    sha256 = "sha256-rItbBrwItkfJf8tKImAQsiXDR95sr0LqaM51gDZG/nI=";
+    # The upstream tool loader still lists Python 3.10 as a GDB runtime.
+    # Nixpkgs 26.05 removed it; none of the tools selected below use GDB.
+    callPackage =
+      fn: args:
+      callPackage fn (
+        lib.intersectAttrs (builtins.functionArgs (if builtins.isFunction fn then fn else import fn)) {
+          python310 = python3;
+        }
+        // args
+      );
+    toolsToInclude = [
+      "riscv32-esp-elf"
+      "xtensa-esp-elf"
+      "esp32ulp-elf"
+      "esp-rom-elfs"
+    ];
+  };
+in
+esp-idf.overrideAttrs (old: {
+  patches = (old.patches or [ ]) ++ [
+    ./patches/0001-feat-ble-bluedroid-harden-LE-bond-handling-across-en.patch
+    ./patches/0002-feat-ble-bluedroid-reject-weaker-LE-re-pairing.patch
   ];
-}
+})
